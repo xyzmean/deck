@@ -27,10 +27,17 @@
 			<p v-if="showArchived">
 				({{ t('deck', 'Archived cards') }})
 			</p>
+			<!-- Сколько карточек на доске. Раньше это число собирала тема
+			     CSS-счётчиком в ::after обёртки доски: значение счётчика видно
+			     только элементам ПОСЛЕ инкрементов, поэтому плашку
+			     приходилось выводить в конце документа и класть в строку
+			     шапки абсолютом. Абсолют не занимает места — и на 1024 px
+			     плашка легла на стопку аватаров (замерено: плашка 571..648,
+			     аватары 578..666). Здесь это обычный элемент строки. -->
+			<span class="board-title__count">{{ cardsCountLabel }}</span>
 		</div>
 		<div class="board-actions">
-			<SessionList v-if="isNotifyPushEnabled && presentUsers.length"
-				:sessions="presentUsers" />
+			<BoardMembers v-if="board" :board="board" />
 			<!-- Hide but not remove for now as search might change in the future -->
 			<div v-if="false" class="deck-search">
 				<input id="deck-search-input"
@@ -43,35 +50,7 @@
 					@blur="$store.dispatch('toggleShortcutLock', false)"
 					@input="$store.commit('setSearchQuery', $event.target.value)">
 			</div>
-			<div v-if="board && canManage && !showArchived && !board.archived"
-				id="stack-add"
-				v-click-outside="hideAddStack">
-				<NcActions v-if="!isAddStackVisible">
-					<NcActionButton @click.stop="showAddStack">
-						{{ t('deck', 'Add list') }}
-						<template #icon>
-							<TableColumnPlusAfter :size="20" />
-						</template>
-					</NcActionButton>
-				</NcActions>
-				<form v-else @submit.prevent="addNewStack()">
-					<label for="new-stack-input-main" class="hidden-visually">{{ t('deck', 'Add list') }}</label>
-					<input id="new-stack-input-main"
-						v-model="newStackTitle"
-						v-focus
-						type="text"
-						class="no-close"
-						:placeholder="t('deck', 'List name')"
-						required
-						@focus="$store.dispatch('toggleShortcutLock', true)"
-						@blur="$store.dispatch('toggleShortcutLock', false)">
-					<input :title="t('deck', 'Add list')"
-						class="icon-confirm"
-						type="submit"
-						value="">
-				</form>
-			</div>
-			<div v-if="board" class="board-action-buttons">
+			<div v-if="board" class="board-action-buttons board-action-buttons--filter">
 				<div class="board-action-buttons__filter">
 					<NcPopover :placement="'bottom-end'"
 						:aria-label="t('deck', 'Active filters')"
@@ -223,7 +202,36 @@
 						</div>
 					</NcPopover>
 				</div>
-
+			</div>
+			<div v-if="board && canManage && !showArchived && !board.archived"
+				id="stack-add"
+				v-click-outside="hideAddStack">
+				<NcActions v-if="!isAddStackVisible">
+					<NcActionButton @click.stop="showAddStack">
+						{{ t('deck', 'Add list') }}
+						<template #icon>
+							<TableColumnPlusAfter :size="20" />
+						</template>
+					</NcActionButton>
+				</NcActions>
+				<form v-else @submit.prevent="addNewStack()">
+					<label for="new-stack-input-main" class="hidden-visually">{{ t('deck', 'Add list') }}</label>
+					<input id="new-stack-input-main"
+						v-model="newStackTitle"
+						v-focus
+						type="text"
+						class="no-close"
+						:placeholder="t('deck', 'List name')"
+						required
+						@focus="$store.dispatch('toggleShortcutLock', true)"
+						@blur="$store.dispatch('toggleShortcutLock', false)">
+					<input :title="t('deck', 'Add list')"
+						class="icon-confirm"
+						type="submit"
+						value="">
+				</form>
+			</div>
+			<div v-if="board" class="board-action-buttons">
 				<NcActions :aria-label="t('deck', 'View Modes')"
 					:name="t('deck', 'Toggle View Modes')">
 					<NcActionButton :model-value="viewMode === 'kanban'"
@@ -290,8 +298,8 @@ import ArrowCollapseVerticalIcon from 'vue-material-design-icons/ArrowCollapseVe
 import ArrowExpandVerticalIcon from 'vue-material-design-icons/ArrowExpandVertical.vue'
 import ViewColumnIcon from 'vue-material-design-icons/ViewColumn.vue'
 import ChartGanttIcon from 'vue-material-design-icons/ChartGantt.vue'
-import SessionList from './SessionList.vue'
-import { isNotifyPushEnabled } from '../sessions.js'
+import BoardMembers from './BoardMembers.vue'
+import { visibleCardsCountByBoard } from '../helpers/visibleCards.js'
 import CreateNewCardCustomPicker from '../views/CreateNewCardCustomPicker.vue'
 import { getCurrentUser } from '@nextcloud/auth'
 
@@ -315,7 +323,7 @@ export default {
 		ChartGanttIcon,
 		NcActionSeparator,
 		TableColumnPlusAfter,
-		SessionList,
+		BoardMembers,
 	},
 	mixins: [labelStyle],
 	props: {
@@ -339,7 +347,6 @@ export default {
 			filter: { tags: [], users: [], due: '', unassigned: false, completed: 'both' },
 			showAddCardModal: false,
 			defaultPageTitle: false,
-			isNotifyPushEnabled: isNotifyPushEnabled(),
 		}
 	},
 
@@ -364,13 +371,13 @@ export default {
 		isFilterActive() {
 			return this.filter.tags.length !== 0 || this.filter.users.length !== 0 || this.filter.due !== '' || this.filter.completed !== 'both'
 		},
+		/** «9 карточек» — то же число, что показывают счётчики колонок. */
+		cardsCountLabel() {
+			const count = visibleCardsCountByBoard(this.$store, this.board.id, this.showArchived)
+			return this.n('deck', '%n card', '%n cards', count)
+		},
 		labelsSorted() {
 			return [...this.board.labels].sort((a, b) => (a.title < b.title) ? -1 : 1)
-		},
-		presentUsers() {
-			if (!this.board) return []
-			// get user object including displayname from the list of all users with acces
-			return this.board.users.filter((user) => this.board.activeSessions.includes(user.uid))
 		},
 	},
 	watch: {
@@ -510,6 +517,21 @@ export default {
 		margin: calc(var(--default-grid-baseline) * 2);
 		height: var(--default-clickable-area);
 		padding-inline-start: var(--default-clickable-area);
+
+		.board-title__count {
+			flex: 0 0 auto;
+			display: flex;
+			align-items: center;
+			height: 24px;
+			padding-inline: 9px;
+			border-radius: var(--border-radius);
+			background-color: var(--color-background-dark);
+			color: var(--color-text-maxcontrast);
+			font-size: var(--default-font-size);
+			font-weight: 600;
+			line-height: 1;
+			white-space: nowrap;
+		}
 
 		.board-title {
 			display: flex;

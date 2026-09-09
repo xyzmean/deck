@@ -44,6 +44,12 @@
 						value="">
 				</form>
 			</transition>
+			<!-- Счётчик карточек колонки. Раньше его рисовала тема
+			     CSS-счётчиком по числу узлов .card — он не мог считать
+			     ничего, кроме отрисованного, и уступал место кнопкам
+			     колонки прозрачностью. Здесь это то же число, что
+			     показывает сама колонка. -->
+			<span class="stack__count">{{ cardsByStack.length }}</span>
 			<NcActions v-if="canManage && !isArchived" :force-menu="true">
 				<NcActionButton v-if="!showArchived" icon="icon-archive" @click="modalArchivAllCardsShow=true">
 					<template #icon>
@@ -148,6 +154,7 @@
 <script>
 import ClickOutside from 'vue-click-outside'
 import { mapGetters, mapState } from 'vuex'
+import { visibleCardsByStack } from '../../helpers/visibleCards.js'
 import { Container, Draggable } from 'vue-smooth-dnd'
 import ArchiveIcon from 'vue-material-design-icons/ArchiveOutline.vue'
 import CardPlusOutline from 'vue-material-design-icons/CardPlusOutline.vue'
@@ -211,12 +218,7 @@ export default {
 			showArchived: state => state.showArchived,
 		}),
 		cardsByStack() {
-			return this.$store.getters.cardsByStack(this.stack.id).filter((card) => {
-				if (this.showArchived) {
-					return card.archived
-				}
-				return !card.archived
-			})
+			return visibleCardsByStack(this.$store, this.stack.id, this.showArchived)
 		},
 		isDoneColumn() {
 			return !!this.stack.isDoneColumn
@@ -460,6 +462,21 @@ export default {
 				outline: 2px solid var(--color-border-dark);
 				border-radius: 3px;
 			}
+		}
+
+		.stack__count {
+			flex: 0 0 auto;
+			display: flex;
+			align-items: center;
+			padding-inline: 6px;
+			color: var(--color-text-maxcontrast);
+			font-size: var(--default-font-size);
+			font-variant-numeric: tabular-nums;
+			// Заголовок колонки — sticky, и счётчик стоит в одной строке с
+			// кнопками, которые появляются по наведению. Курсор шапки —
+			// grab (её тащат), число само по себе не интерактивно.
+			cursor: inherit;
+			user-select: none;
 		}
 
 		.stack__done-icon {
