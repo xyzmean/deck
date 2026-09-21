@@ -45,6 +45,12 @@
 			</AppNavigationBoardCategory>
 			<AppNavigationAddBoard v-if="canCreate" />
 			<AppNavigationImportBoard v-if="canCreate" />
+			<!-- Состав доски под списком досок, как в макете. Здесь, а не в
+			     шапке: шапка показывает стопкой, кто есть, а колонка — кто
+			     именно и в какой роли. Внутри #list, а не в #default: слот по
+			     умолчанию у NcAppNavigation рисуется ДО списка, и блок
+			     оказывался над ним. -->
+			<AppNavigationBoardMembers v-if="currentBoard" :board="currentBoard" />
 		</template>
 		<template #default>
 			<DeckAppSettings :open.sync="settingsOpened"
@@ -64,11 +70,12 @@
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapState } from 'vuex'
 import ClickOutside from 'vue-click-outside'
 import { NcAppNavigation, NcAppNavigationItem } from '@nextcloud/vue'
 import AppNavigationAddBoard from './AppNavigationAddBoard.vue'
 import AppNavigationBoardCategory from './AppNavigationBoardCategory.vue'
+import AppNavigationBoardMembers from './AppNavigationBoardMembers.vue'
 import { loadState } from '@nextcloud/initial-state'
 import ArchiveIcon from 'vue-material-design-icons/Archive.vue'
 import ArchiveOutlineIcon from 'vue-material-design-icons/ArchiveOutline.vue'
@@ -90,6 +97,7 @@ export default {
 		NcAppNavigation,
 		AppNavigationAddBoard,
 		AppNavigationBoardCategory,
+		AppNavigationBoardMembers,
 		AppNavigationImportBoard,
 		NcAppNavigationItem,
 		ArchiveIcon,
@@ -127,6 +135,9 @@ export default {
 			'archivedBoards',
 			'sharedBoards',
 		]),
+		...mapState({
+			currentBoard: (state) => state.currentBoard,
+		}),
 		isAdmin() {
 			return !!getCurrentUser()?.isAdmin
 		},
