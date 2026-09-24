@@ -202,7 +202,14 @@ class Calendar extends ExternalCalendar {
 	 */
 	public function getProperties($properties) {
 		return [
-			'{DAV:}displayname' => 'Deck: ' . ($this->board ? $this->board->getTitle() : 'no board object provided'),
+			// The board title alone. In xcloud boards are the company's projects
+			// and Tasks lists them under their own "Lists" caption, so an
+			// untranslated "Deck: " in front of every entry (and of every task's
+			// list chip) only repeated what the heading says. External CalDAV
+			// clients lose the hint; that trade-off is accepted. propPatch still
+			// strips the prefix, so a client that cached the old name can rename
+			// the board without writing "Deck: " into its title.
+			'{DAV:}displayname' => $this->board ? $this->board->getTitle() : 'no board object provided',
 			'{http://apple.com/ns/ical/}calendar-color' => '#' . $this->board->getColor(),
 			'{' . Plugin::NS_CALDAV . '}supported-calendar-component-set' => new SupportedCalendarComponentSet(['VTODO']),
 		];
