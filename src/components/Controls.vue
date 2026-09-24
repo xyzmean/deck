@@ -232,6 +232,16 @@
 				</form>
 			</div>
 			<div v-if="board" class="board-action-buttons">
+				<NcButton v-if="boardChatUrl"
+					class="board-chat"
+					type="tertiary"
+					:href="boardChatUrl"
+					:title="t('deck', 'Open the board\'s room in Chat')">
+					<template #icon>
+						<ChatIcon :size="20" decorative />
+					</template>
+					{{ t('deck', 'Chat') }}
+				</NcButton>
 				<NcActions :aria-label="t('deck', 'View Modes')"
 					:name="t('deck', 'Toggle View Modes')">
 					<NcActionButton :model-value="viewMode === 'kanban'"
@@ -302,6 +312,8 @@ import BoardMembers from './BoardMembers.vue'
 import { visibleCardsCountByBoard } from '../helpers/visibleCards.js'
 import CreateNewCardCustomPicker from '../views/CreateNewCardCustomPicker.vue'
 import { getCurrentUser } from '@nextcloud/auth'
+import ChatIcon from 'vue-material-design-icons/ChatOutline.vue'
+import { chatLink } from '../services/chatLink.js'
 
 export default {
 	name: 'Controls',
@@ -324,6 +336,7 @@ export default {
 		NcActionSeparator,
 		TableColumnPlusAfter,
 		BoardMembers,
+		ChatIcon,
 	},
 	mixins: [labelStyle],
 	props: {
@@ -347,6 +360,7 @@ export default {
 			filter: { tags: [], users: [], due: '', unassigned: false, completed: 'both' },
 			showAddCardModal: false,
 			defaultPageTitle: false,
+			boardChatUrl: null,
 		}
 	},
 
@@ -381,6 +395,18 @@ export default {
 		},
 	},
 	watch: {
+		// xcloud: the board's room in Chat, when it has one and the user is in it.
+		'board.id': {
+			immediate: true,
+			async handler(id) {
+				this.boardChatUrl = null
+				const url = await chatLink('boards', id)
+				// The board may have changed while we were asking.
+				if (this.board?.id === id) {
+					this.boardChatUrl = url
+				}
+			},
+		},
 		board(current, previous) {
 			if (current?.id !== previous?.id) {
 				this.clearFilter()

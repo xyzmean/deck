@@ -34,6 +34,17 @@
 			<CardMenuEntries :card="currentCard" :hide-details-entry="true" />
 		</template>
 		<template #description>
+			<!-- xcloud: the nc-vue 8 sidebar has no primary-actions slot; the
+				description area is the one under the title and above the tabs. -->
+			<NcButton v-if="cardChatUrl"
+				class="card-chat"
+				type="secondary"
+				:href="cardChatUrl">
+				<template #icon>
+					<ChatIcon :size="20" decorative />
+				</template>
+				{{ t('deck', 'Discuss in Chat') }}
+			</NcButton>
 			<NcReferenceList v-if="currentCard.referenceData"
 				:text="currentCard.title"
 				:interactive="false" />
@@ -81,7 +92,7 @@
 </template>
 
 <script>
-import { NcActionButton, NcAppSidebar, NcAppSidebarTab, NcUserBubble } from '@nextcloud/vue'
+import { NcActionButton, NcAppSidebar, NcAppSidebarTab, NcButton, NcUserBubble } from '@nextcloud/vue'
 import { NcReferenceList } from '@nextcloud/vue/dist/Components/NcRichText.js'
 import { getCapabilities } from '@nextcloud/capabilities'
 import { mapState, mapGetters } from 'vuex'
@@ -101,6 +112,8 @@ import ActivityIcon from 'vue-material-design-icons/LightningBolt.vue'
 import { showError, showWarning } from '@nextcloud/dialogs'
 import { getLocale } from '@nextcloud/l10n'
 import CardMenuEntries from '../cards/CardMenuEntries.vue'
+import ChatIcon from 'vue-material-design-icons/ChatOutline.vue'
+import { chatLink } from '../../services/chatLink.js'
 
 const capabilities = getCapabilities()
 
@@ -109,6 +122,8 @@ export default {
 	components: {
 		NcAppSidebar,
 		NcAppSidebarTab,
+		NcButton,
+		ChatIcon,
 		NcActionButton,
 		NcReferenceList,
 		CardSidebarTabAttachments,
@@ -148,6 +163,7 @@ export default {
 			hasActivity: capabilities && capabilities.activity,
 			locale: getLocale(),
 			activeTabId: this.tabId || 'details',
+			cardChatUrl: null,
 		}
 	},
 	computed: {
@@ -204,6 +220,18 @@ export default {
 		},
 	},
 	watch: {
+		// xcloud: the task's message in Chat — in the taker's direct room for
+		// the one who took it, in the group room for everybody else.
+		'currentCard.id': {
+			immediate: true,
+			async handler(id) {
+				this.cardChatUrl = null
+				const url = await chatLink('cards', id)
+				if (this.currentCard?.id === id) {
+					this.cardChatUrl = url
+				}
+			},
+		},
 		currentCard(newCard, oldCard) {
 			if (newCard.id === oldCard.id) return
 			this.focusHeader()
