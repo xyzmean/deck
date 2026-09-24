@@ -14,9 +14,9 @@
 			@click="openCard"
 			@keyup.self="handleCardKeyboardShortcut"
 			@mouseenter="focus(card.id)">
-			<div v-if="standalone" class="card-related">
-				<div :style="{backgroundColor: '#' + board.color}" class="board-bullet" dir="auto" />
-				{{ board.title }} » {{ stack.title }}
+			<div v-if="(standalone || showBoard) && relatedBoard" class="card-related" dir="auto">
+				<div :style="relatedBoard.color ? {backgroundColor: '#' + relatedBoard.color} : null" class="board-bullet" />
+				<span class="card-related__title">{{ relatedBoard.title }}<template v-if="standalone && stack"> » {{ stack.title }}</template></span>
 			</div>
 			<CardCover v-if="showCardCover" :card-id="card.id" />
 			<div class="card-upper">
@@ -116,6 +116,15 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+		/**
+		 * Name the card's board above the title. Views that mix cards of
+		 * several boards (the upcoming overview) need it: without it two
+		 * cards titled alike on different boards cannot be told apart.
+		 */
+		showBoard: {
+			type: Boolean,
+			default: false,
+		},
 		dragging: {
 			type: Boolean,
 			default: false,
@@ -143,6 +152,16 @@ export default {
 		},
 		stack() {
 			return this.$store.getters.stackById(this?.card?.stackId)
+		},
+		relatedBoard() {
+			// The overview loads cards without their stacks, so `board` (derived
+			// from the stack) is empty there. Fall back to the navigation's board
+			// list, which carries the colour, and then to the summary the
+			// upcoming endpoint embeds in every card (id and title only).
+			return this.board
+				?? this.$store.getters.boardById(this.card?.boardId)
+				?? this.card?.board
+				?? null
 		},
 		canEdit() {
 			if (this.currentBoard) {

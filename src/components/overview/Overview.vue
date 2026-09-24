@@ -14,11 +14,14 @@
 		</div>
 
 		<div v-else-if="isValidFilter" class="overview">
-			<div v-for="columnProps in columnPropsList" :key="columnProps.title" class="dashboard-column">
+			<div v-for="columnProps in columnPropsList"
+				:key="columnProps.title"
+				:class="'dashboard-column--' + columnProps.filter"
+				class="dashboard-column">
 				<div class="dashboard-column__header">
 					<h3 class="dashboard-column__header-title"
-						:title="columnProps.title"
-						:aria-label="columnProps.title">
+						:title="t('deck', columnProps.title)"
+						:aria-label="t('deck', columnProps.title)">
 						{{ t('deck', columnProps.title) }}
 					</h3>
 				</div>
@@ -26,12 +29,14 @@
 					<template v-if="columnProps.sort === false">
 						<CardItem v-for="card in filterCards(columnProps.filter)"
 							:id="card.id"
-							:key="card.id" />
+							:key="card.id"
+							show-board />
 					</template>
 					<template v-else>
 						<CardItem v-for="card in sortCards(filterCards(columnProps.filter))"
 							:id="card.id"
-							:key="card.id" />
+							:key="card.id"
+							show-board />
 					</template>
 				</div>
 			</div>
