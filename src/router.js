@@ -6,6 +6,7 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 import { generateUrl, getRootUrl } from '@nextcloud/router'
+import { loadState } from '@nextcloud/initial-state'
 import { BOARD_FILTERS } from './store/main.js'
 import Boards from './components/boards/Boards.vue'
 import Board from './components/board/Board.vue'
@@ -160,18 +161,59 @@ router.beforeEach((to, from, next) => {
 		next(path)
 		return
 	}
-	// Redirect to the pinned default board if set and navigating to the main route
+	// Opening Deck opens a board, not the overview: the pinned default board,
+	// else the board this browser had open last, else the first board in the
+	// navigation. The overview stays one click away under "Upcoming cards"
+	// and is the landing page only for someone who has no board at all.
 	if (to.name === 'main') {
-		const defaultBoardId = localStorage.getItem('deck.defaultBoardId')
-		if (defaultBoardId) {
-			next({ name: 'board', params: { id: parseInt(defaultBoardId, 10) } })
-			return
+		const boardId = landingBoardId()
+		if (boardId !== null) {
+			next({ name: 'board', params: { id: boardId } })
 		} else {
 			next({ name: 'upcoming' })
-			return
+		}
+		return
+	}
+	if (to.params.id && to.matched.some(record => record.name === 'board')) {
+		try {
+			localStorage.setItem(LAST_BOARD_KEY, String(to.params.id))
+		} catch (e) {
+			// Storage can be unavailable (private mode); landing just falls back.
 		}
 	}
 	next()
 })
+
+const LAST_BOARD_KEY = 'deck.lastBoardId'
+
+/**
+ * The board to land on, or null when there is none to open.
+ *
+ * Boards are checked against the list the page delivered, so a board that
+ * was deleted, archived or unshared since it was remembered is skipped
+ * instead of greeting the user with an error.
+ *
+ * @return {number|null}
+ */
+function landingBoardId() {
+	const boards = loadState('deck', 'initialBoards', [])
+		.filter(board => board.archived === false && !board.deletedAt)
+	const isOpen = (id) => id !== null && boards.some(board => String(board.id) === id)
+	const read = (key) => {
+		try {
+			return localStorage.getItem(key)
+		} catch (e) {
+			return null
+		}
+	}
+	for (const id of [read('deck.defaultBoardId'), read(LAST_BOARD_KEY)]) {
+		if (isOpen(id)) {
+			return parseInt(id, 10)
+		}
+	}
+	// Same order as the navigation lists them.
+	const first = [...boards].sort((a, b) => a.title.localeCompare(b.title))[0]
+	return first ? first.id : null
+}
 
 export default router

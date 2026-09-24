@@ -4,11 +4,11 @@
 -->
 <template>
 	<span>
-		<NcAppNavigationItem v-if="!editing"
+		<NcAppNavigationItem v-if="!editing && entry"
 			:name="t('deck', 'Add board')"
 			icon="icon-add"
 			@click.prevent.stop="startCreateBoard" />
-		<div v-else class="board-create">
+		<div v-else-if="editing" class="board-create">
 			<NcColorPicker v-model="color" class="app-navigation-entry-bullet-wrapper" :disabled="loading">
 				<button :style="{ backgroundColor: color }" class="color0 icon-colorpicker app-navigation-entry-bullet" />
 			</NcColorPicker>
@@ -61,7 +61,16 @@ export default {
 	name: 'AppNavigationAddBoard',
 	components: { NcButton, NcColorPicker, NcAppNavigationItem, NcLoadingIcon, NcTextField, CheckIcon, CloseIcon },
 	directives: {},
-	props: {},
+	props: {
+		/**
+		 * Whether to render the "Add board" entry. Without it the form only
+		 * opens through startCreateBoard(), from the "+" in the header.
+		 */
+		entry: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
 			value: '',

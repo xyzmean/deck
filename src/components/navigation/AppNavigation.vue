@@ -5,6 +5,37 @@
 
 <template>
 	<NcAppNavigation :class="{'icon-loading': loading}">
+		<!-- Название раздела и «+» одной строкой, как в макете и как у Задач.
+		     «+» — меню из двух действий, потому что пунктов «Добавить доску» и
+		     «Импортировать доску» в списке больше нет: их место в макете
+		     занимают сами доски. -->
+		<template #search>
+			<div class="navigation-heading">
+				<h2 class="navigation-heading__name">
+					{{ t('deck', 'Boards') }}
+				</h2>
+				<NcActions v-if="canCreate"
+					:aria-label="t('deck', 'Add board')"
+					:title="t('deck', 'Add board')"
+					variant="secondary">
+					<template #icon>
+						<PlusIcon :size="20" />
+					</template>
+					<NcActionButton :close-after-click="true" @click="startCreateBoard">
+						<template #icon>
+							<PlusIcon :size="20" />
+						</template>
+						{{ t('deck', 'Add board') }}
+					</NcActionButton>
+					<NcActionButton :close-after-click="true" @click="startImportBoard">
+						<template #icon>
+							<UploadIcon :size="20" />
+						</template>
+						{{ t('deck', 'Import board') }}
+					</NcActionButton>
+				</NcActions>
+			</div>
+		</template>
 		<template #list>
 			<NcAppNavigationItem :name="t('deck', 'Upcoming cards')"
 				:exact="true"
@@ -14,17 +45,13 @@
 					<CalendarOutlineIcon v-else :size="20" />
 				</template>
 			</NcAppNavigationItem>
-			<AppNavigationBoardCategory id="deck-navigation-all"
-				to="/board"
-				:text="t('deck', 'All boards')"
-				:boards="noneArchivedBoards"
-				:open-on-add-boards="true"
-				:default-open="true"
-				icon="icon-deck">
-				<template #icon>
-					<DeckIcon :size="16" />
-				</template>
-			</AppNavigationBoardCategory>
+			<!-- Доски — прямо в списке, а не внутри раскрывающегося «Все доски»:
+			     в макете список плоский, а вложенность съедала отступ, и название
+			     активной доски обрезалось рядом с её кнопками. -->
+			<AppNavigationBoard v-for="board in noneArchivedBoardsSorted"
+				:key="board.id"
+				:board="board" />
+			<AppNavigationAddBoard v-if="canCreate" ref="addBoard" :entry="false" />
 			<AppNavigationBoardCategory id="deck-navigation-archived"
 				to="/board/archived"
 				:text="t('deck', 'Archived boards')"
@@ -43,8 +70,7 @@
 					<ShareVariantIcon :size="20" decorative />
 				</template>
 			</AppNavigationBoardCategory>
-			<AppNavigationAddBoard v-if="canCreate" />
-			<AppNavigationImportBoard v-if="canCreate" />
+			<AppNavigationImportBoard v-if="canCreate" ref="importBoard" :entry="false" />
 			<!-- Состав доски под списком досок, как в макете. Здесь, а не в
 			     шапке: шапка показывает стопкой, кто есть, а колонка — кто
 			     именно и в какой роли. Внутри #list, а не в #default: слот по
@@ -72,8 +98,9 @@
 <script>
 import { mapGetters, mapState } from 'vuex'
 import ClickOutside from 'vue-click-outside'
-import { NcAppNavigation, NcAppNavigationItem } from '@nextcloud/vue'
+import { NcActionButton, NcActions, NcAppNavigation, NcAppNavigationItem } from '@nextcloud/vue'
 import AppNavigationAddBoard from './AppNavigationAddBoard.vue'
+import AppNavigationBoard from './AppNavigationBoard.vue'
 import AppNavigationBoardCategory from './AppNavigationBoardCategory.vue'
 import AppNavigationBoardMembers from './AppNavigationBoardMembers.vue'
 import { loadState } from '@nextcloud/initial-state'
@@ -81,12 +108,13 @@ import ArchiveIcon from 'vue-material-design-icons/Archive.vue'
 import ArchiveOutlineIcon from 'vue-material-design-icons/ArchiveOutline.vue'
 import CalendarIcon from 'vue-material-design-icons/Calendar.vue'
 import CalendarOutlineIcon from 'vue-material-design-icons/CalendarOutline.vue'
-import DeckIcon from './../icons/DeckIcon.vue'
 import ShareVariantIcon from 'vue-material-design-icons/ShareOutline.vue'
 import { subscribe } from '@nextcloud/event-bus'
 import AppNavigationImportBoard from './AppNavigationImportBoard.vue'
 import DeckAppSettings from '../DeckAppSettings.vue'
 import IconCog from 'vue-material-design-icons/CogOutline.vue'
+import PlusIcon from 'vue-material-design-icons/Plus.vue'
+import UploadIcon from 'vue-material-design-icons/TrayArrowUp.vue'
 import { getCurrentUser } from '@nextcloud/auth'
 
 const canCreateState = loadState('deck', 'canCreate')
@@ -94,8 +122,11 @@ const canCreateState = loadState('deck', 'canCreate')
 export default {
 	name: 'AppNavigation',
 	components: {
+		NcActionButton,
+		NcActions,
 		NcAppNavigation,
 		AppNavigationAddBoard,
+		AppNavigationBoard,
 		AppNavigationBoardCategory,
 		AppNavigationBoardMembers,
 		AppNavigationImportBoard,
@@ -104,10 +135,11 @@ export default {
 		ArchiveOutlineIcon,
 		CalendarIcon,
 		CalendarOutlineIcon,
-		DeckIcon,
 		ShareVariantIcon,
 		DeckAppSettings,
 		IconCog,
+		PlusIcon,
+		UploadIcon,
 	},
 	directives: {
 		ClickOutside,
@@ -138,6 +170,9 @@ export default {
 		...mapState({
 			currentBoard: (state) => state.currentBoard,
 		}),
+		noneArchivedBoardsSorted() {
+			return [...this.noneArchivedBoards].sort((a, b) => a.title.localeCompare(b.title))
+		},
 		isAdmin() {
 			return !!getCurrentUser()?.isAdmin
 		},
@@ -172,6 +207,12 @@ export default {
 		})
 	},
 	methods: {
+		startCreateBoard() {
+			this.$refs.addBoard.startCreateBoard()
+		},
+		startImportBoard() {
+			this.$refs.importBoard.startImportBoard()
+		},
 		openSettings() {
 			this.settingsOpened = true
 		},

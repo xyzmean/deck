@@ -4,7 +4,7 @@
 -->
 <template>
 	<div>
-		<NcAppNavigationItem :name="t('deck', 'Import board')" icon="icon-upload" @click.prevent.stop="startImportBoard" />
+		<NcAppNavigationItem v-if="entry" :name="t('deck', 'Import board')" icon="icon-upload" @click.prevent.stop="startImportBoard" />
 		<input ref="fileInput"
 			type="file"
 			accept="application/json"
@@ -22,6 +22,14 @@ export default {
 	name: 'AppNavigationImportBoard',
 	components: { NcAppNavigationItem },
 	props: {
+		/**
+		 * Whether to render the "Import board" entry. Without it the file
+		 * picker only opens through startImportBoard().
+		 */
+		entry: {
+			type: Boolean,
+			default: true,
+		},
 		loading: {
 			type: Boolean,
 			default: false,

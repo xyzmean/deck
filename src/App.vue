@@ -100,8 +100,9 @@ export default {
 		},
 	},
 	created() {
+		// Only fetch what the page did not already deliver.
 		const initialState = loadState('deck', 'initialBoards', null)
-		if (initialState !== null) {
+		if (initialState === null) {
 			this.$store.dispatch('loadBoards')
 		}
 		this.$store.dispatch('loadSharees')

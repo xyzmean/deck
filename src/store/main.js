@@ -53,7 +53,7 @@ export default function storeFactory() {
 			currentBoard: null,
 			currentCard: null,
 			hasCardSaveError: false,
-			boards: loadState('deck', 'initialBoards', {}),
+			boards: loadState('deck', 'initialBoards', []),
 			sharees: [],
 			assignableUsers: [],
 			boardFilter: BOARD_FILTERS.ALL,

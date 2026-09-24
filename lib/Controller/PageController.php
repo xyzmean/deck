@@ -55,9 +55,10 @@ class PageController extends Controller {
 		$this->initialState->provideInitialState('canCreate', $this->permissionService->canCreate());
 		$this->initialState->provideInitialState('config', $this->configService->getAll());
 
-		$this->initialState->provideInitialState('initialBoards', [
-			$this->boardService->findAll(),
-		]);
+		// The list itself, not wrapped: the store reads it as the board list,
+		// and a wrapped list left the navigation empty until a second request
+		// fetched the very same boards.
+		$this->initialState->provideInitialState('initialBoards', $this->boardService->findAll());
 
 		$this->eventDispatcher->dispatchTyped(new LoadSidebar());
 		$this->eventDispatcher->dispatchTyped(new CollaborationResourcesEvent());
